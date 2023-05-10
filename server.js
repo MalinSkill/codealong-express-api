@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import mongoose from "mongoose";
 
 // Defines the port the app will run on. Defaults to 8080, but can be overridden
 // when starting the server. Example command to overwrite PORT env variable value:
@@ -11,10 +12,39 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+const mongoUrl = process.env.MONGO_URL || "mongodb://localhost/animals"
+mongoose.connect(mongoUrl, { useNewUrlParser: true, useUnifiedTopology: true })
+mongoose.Promise = Promise
+
+const Animal = mongoose.model('Animal', {
+  name: String,
+  age: Number,
+  isFurry: Boolean
+})
+
+// delete everythign in the database and then fill it up again
+Animal.deleteMany().then(() => {
+  new Animal({ name: 'Buster', age: 3, isFurry: true }).save()
+  new Animal({ name: 'Lucy', age: 5, isFurry: true }).save()
+  new Animal({ name: 'goldy the goldfish', age: 3, isFurry: false }).save()
+})
 // Start defining your routes here
 app.get("/", (req, res) => {
-  res.send("Hello Technigo!");
+  Animal.find().then(animals => {
+    res.json(animals)
+  })
 });
+
+app.get("/:name", (req, res) => {
+  Animal.findOne({ name: req.params.name }).then(animal => {
+    if (animal) {
+      res.json(animal)
+    } else {
+      res.status(404).json({ error: 'Not found' })
+    }
+  })
+})
+
 
 // Start the server
 app.listen(port, () => {
